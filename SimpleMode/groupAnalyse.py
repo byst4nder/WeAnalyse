@@ -16,9 +16,17 @@ def GroupRankingAll(chatrooms,filename="group_ranking_all", num = 10, Des=2, sta
     '''
     message_list = []
     for chatroom in chatrooms:
-        for row in basicTool.GetData(chatroom=chatroom,columns=["SentFrom","Message"],start_time=start_time,end_time=end_time,Type=1):
-            if row[0]!="system":
-                message_list.append(row)
+        message_list.extend(
+            row
+            for row in basicTool.GetData(
+                chatroom=chatroom,
+                columns=["SentFrom", "Message"],
+                start_time=start_time,
+                end_time=end_time,
+                Type=1,
+            )
+            if row[0] != "system"
+        )
     Normal(message_list, filename = filename, num = num, title=title)
 
 def GroupRankingSingle(chatroom,filename="group_ranking_single", num = 10, Des=2, start_time="1970-01-01", end_time="", title=""):
@@ -29,10 +37,17 @@ def GroupRankingSingle(chatroom,filename="group_ranking_single", num = 10, Des=2
     num：int，横坐标数量，即显示的用户数
     Des：0：发出，1：接收，2：全部
     '''
-    message_list = []
-    for row in basicTool.GetData(chatroom=chatroom,columns=["SentFrom","Message"],start_time=start_time,end_time=end_time,Type=1):
-        if row[0]!="system":
-            message_list.append(row)
+    message_list = [
+        row
+        for row in basicTool.GetData(
+            chatroom=chatroom,
+            columns=["SentFrom", "Message"],
+            start_time=start_time,
+            end_time=end_time,
+            Type=1,
+        )
+        if row[0] != "system"
+    ]
     Normal(message_list, filename = filename, num = num, title=title)
 
 def Normal(params, filename = "group_ranking", num = 10, title=""):
@@ -46,7 +61,7 @@ def Normal(params, filename = "group_ranking", num = 10, title=""):
     name_counter_dict = {}
     for key,value in id_counter_dict.items():
         name = basicTool.GetName(key)
-        if not name in name_counter_dict.keys():
+        if name not in name_counter_dict:
             name_counter_dict[name] = value
         else:
             name_counter_dict[name] += value
@@ -77,7 +92,7 @@ def Normal(params, filename = "group_ranking", num = 10, title=""):
         # is_datazoom_show=True,
         is_splitline_show=False)
     grid.add(bar,grid_bottom="30%")
-    grid.render(path=filename+".html")
+    grid.render(path=f"{filename}.html")
 
 if __name__=='__main__':
     GroupRankingSingle("Chat_67183be064c8c3ef11df9bb7a53014c8",filename="thedeadgroup_userranking_v", num = 25, Des=2, title="")

@@ -6,14 +6,11 @@ def GetWXID(chatroom):
     返回微信号
     从mysql中获取，速度快但只能查找已导入的朋友信息
     '''
-    sql = "select UserName from friends where EncodeUserName='"+chatroom+"'"
+    sql = f"select UserName from friends where EncodeUserName='{chatroom}'"
     with sqlInit.MysqlInit() as mysql_cur:
         mysql_cur.execute(sql)
         result = mysql_cur.fetchone()
-        if result != None:
-            return result[0]
-        else:
-            return ""
+        return result[0] if result != None else ""
     
 
 def GetRowNum(chatroom,db="mysql",Des=2):
@@ -25,9 +22,9 @@ def GetRowNum(chatroom,db="mysql",Des=2):
     if db=="mysql":
         with sqlInit.MysqlInit() as mysql_cur:
             if Des == 2:
-                sql = "select count(*) from "+chatroom
+                sql = f"select count(*) from {chatroom}"
             else:
-                sql = "select count(*) from "+chatroom+" where Des="+str(Des)
+                sql = f"select count(*) from {chatroom} where Des={str(Des)}"
             mysql_cur.execute(sql)
             fetchResult = mysql_cur.fetchall()
             for row in fetchResult:
@@ -35,9 +32,9 @@ def GetRowNum(chatroom,db="mysql",Des=2):
     else:
         with sqlInit.SqliteInit() as sqlite_cur:
             if Des == 2:
-                sql = "select count(*) from "+chatroom
+                sql = f"select count(*) from {chatroom}"
             else:
-                sql = "select count(*) from "+chatroom+" where Des="+str(Des)
+                sql = f"select count(*) from {chatroom} where Des={str(Des)}"
             fetchResult = sqlite_cur.execute(sql)
             for row in fetchResult:
                 rowNum = row[0]
@@ -52,12 +49,11 @@ def GetChatrooms(typename=0):
     if typename == 0:
         sql = "select EncodeUserName from friends"
     else: 
-        sql = "select EncodeUserName from friends where Type="+str(typename)
+        sql = f"select EncodeUserName from friends where Type={str(typename)}"
     with sqlInit.MysqlInit() as mysql_cur:
         mysql_cur.execute(sql)
         result = mysql_cur.fetchall()
-        for row in result:
-            chatrooms.append(row[0])
+        chatrooms.extend(row[0] for row in result)
     return chatrooms
 
 def GetData(chatroom,columns=["Message"],Desname=2):
@@ -75,10 +71,7 @@ def GetData(chatroom,columns=["Message"],Desname=2):
     with sqlInit.MysqlInit() as mysql_cur:
         mysql_cur.execute(sql)
         result = mysql_cur.fetchall()
-        for row in result:
-            Messages_list.append(row)
+        Messages_list.extend(iter(result))
     return Messages_list
 
 
-if __name__=='__main__':
-    pass

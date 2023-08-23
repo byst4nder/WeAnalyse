@@ -20,8 +20,17 @@ def TimeAll(chatrooms,chartname="",filename="time_ana_all",Des=2,start_time="197
     '''
     message_list = []
     for chatroom in chatrooms:
-        for row in basicTool.GetData(chatroom=chatroom,columns=["id","CreateTime"],Des=Des,start_time=start_time, end_time=end_time):
-            message_list.append(row)
+        message_list.extend(
+            iter(
+                basicTool.GetData(
+                    chatroom=chatroom,
+                    columns=["id", "CreateTime"],
+                    Des=Des,
+                    start_time=start_time,
+                    end_time=end_time,
+                )
+            )
+        )
     Normal(message_list,chartname=chartname,filename=filename)
 
 def TimeSingle(chatroom,chartname="",filename="time_ana_single",Des=2,start_time="1970-01-02", end_time=""):
@@ -31,9 +40,15 @@ def TimeSingle(chatroom,chartname="",filename="time_ana_single",Des=2,start_time
     filename：str，文件名，存储在output文件夹下
     Des：0：发出，1：接收，2：全部
     '''
-    message_list = []
-    for row in basicTool.GetData(chatroom=chatroom,columns=["id","CreateTime"],Des=Des, start_time=start_time, end_time=end_time):
-        message_list.append(row)
+    message_list = list(
+        basicTool.GetData(
+            chatroom=chatroom,
+            columns=["id", "CreateTime"],
+            Des=Des,
+            start_time=start_time,
+            end_time=end_time,
+        )
+    )
     Normal(message_list,chartname=chartname,filename=filename)
     
 def Normal(params,chartname="",filename="time_ana"):
@@ -44,9 +59,7 @@ def Normal(params,chartname="",filename="time_ana"):
     '''
     
     time_list = []
-    counter = 0
     for row in params:
-        counter += 1
         rawtime = datetime.fromtimestamp(row[1])
         hours = rawtime.hour
         minutes = rawtime.minute
@@ -71,8 +84,7 @@ def Normal(params,chartname="",filename="time_ana"):
     week_title = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"]
     for i in week_title:
         for j in range(24):
-            for k in range(12):
-                days_5min.append(i+" "+str(j)+":"+str(k*5).zfill(2))
+            days_5min.extend(f"{i} {str(j)}:{str(k * 5).zfill(2)}" for k in range(12))
     # for i in week_title:
     #     for j in range(24):
     #         for k in range(6):
@@ -81,11 +93,10 @@ def Normal(params,chartname="",filename="time_ana"):
     #     for j in range(24):
     #         for k in range(2):
     #             days_30min.append(i+" "+str(j)+":"+str(k*30).zfill(2))
-    
+
     for i in range(7):
         for j in range(24):
-            for k in range(12):
-                range_5min.append(time_tree_5min[i,j,k])
+            range_5min.extend(time_tree_5min[i,j,k] for k in range(12))
     # for i in range(7):
     #     for j in range(24):
     #         for k in range(6):
@@ -140,7 +151,7 @@ def Normal(params,chartname="",filename="time_ana"):
         is_xaxislabel_align=True
     )
 
-    bar.render(path=filename+".html")
+    bar.render(path=f"{filename}.html")
     # bar.render(path=filename+".pdf")
 
 def RowLine(chatrooms,filename,limit=10,start_time="1970-01-02", end_time=""):
@@ -148,18 +159,34 @@ def RowLine(chatrooms,filename,limit=10,start_time="1970-01-02", end_time=""):
     统计聊天条数走势
     chatrooms：list，聊天记录表，如["Chat_67183be064c8c3ef11df9bb7a53014c8"]
     '''
-    chatrooms_temp = []
-    for chatroom in chatrooms:
-        chatrooms_temp.append((chatroom,basicTool.GetRowNum(chatroom,start_time=start_time, end_time=end_time)))
+    chatrooms_temp = [
+        (
+            chatroom,
+            basicTool.GetRowNum(
+                chatroom, start_time=start_time, end_time=end_time
+            ),
+        )
+        for chatroom in chatrooms
+    ]
     chatrooms_sorted = sorted(chatrooms_temp, key=operator.itemgetter(1),reverse=True)
     if len(chatrooms_sorted) >= limit:
         chatrooms_inuse = [i[0] for i in chatrooms_sorted[:limit]]
     else:
         chatrooms_inuse = [i[0] for i in chatrooms_sorted]
     id_time_dict = {}
-    for i in range(len(chatrooms_inuse)):
-        temp_arr = np.array(basicTool.GetData(chatrooms_inuse[i],["id","CreateTime"],start_time=start_time, end_time=end_time),dtype="int")
-        id_time_dict[chatrooms_inuse[i]] = np.append(temp_arr[temp_arr[:,0] % 20 == 1],[temp_arr[-1,:]],axis=0)
+    for item in chatrooms_inuse:
+        temp_arr = np.array(
+            basicTool.GetData(
+                item,
+                ["id", "CreateTime"],
+                start_time=start_time,
+                end_time=end_time,
+            ),
+            dtype="int",
+        )
+        id_time_dict[item] = np.append(
+            temp_arr[temp_arr[:, 0] % 20 == 1], [temp_arr[-1, :]], axis=0
+        )
 
     f = plt.figure(figsize=(16, 9))
     plt.grid(True)
@@ -181,7 +208,7 @@ def RowLine(chatrooms,filename,limit=10,start_time="1970-01-02", end_time=""):
         # plt.xlabel(basicTool.GetName(key),fontname='symbola')
         plt.legend(loc='upper left')
 
-    f.savefig(filename+".pdf", bbox_inches='tight')
+    f.savefig(f"{filename}.pdf", bbox_inches='tight')
 
 if __name__=='__main__':
     # chatrooms_group = basicTool.GetChatrooms(typename=1)

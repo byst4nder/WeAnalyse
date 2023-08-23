@@ -51,9 +51,7 @@ def Normal(params,chartname="",filename="usage_ana"):
     chartname：str，图表名
     filename：str，文件名，存储在output文件夹下
     '''
-    day_counter = []
-    for i in params:
-        day_counter.append(i[1])
+    day_counter = [i[1] for i in params]
     heatmap = HeatMap(chartname, "", width=1500)
 
     heatmap.add(
@@ -75,7 +73,7 @@ def Normal(params,chartname="",filename="usage_ana"):
         is_piecewise=True,
     )
 
-    heatmap.render(path=filename+".html")
+    heatmap.render(path=f"{filename}.html")
     # heatmap.render(path=filename+".pdf")
 
 def Lonelydude(chatrooms,filename="lonelydude",start_time="1970-01-02", end_time=""):
@@ -102,54 +100,56 @@ def Lonelydude(chatrooms,filename="lonelydude",start_time="1970-01-02", end_time
                     CreateTime_counter_from[CreateTime] = 1
     no_response = []
     no_reply = []
-    no_response = [i for i in CreateTime_counter_to.keys() if i not in CreateTime_counter_from.keys()]
-    no_reply = [i for i in CreateTime_counter_from.keys() if i not in CreateTime_counter_to.keys()]
+    no_response = [
+        i
+        for i in CreateTime_counter_to
+        if i not in CreateTime_counter_from.keys()
+    ]
+    no_reply = [
+        i
+        for i in CreateTime_counter_from
+        if i not in CreateTime_counter_to.keys()
+    ]
 
     no_response_with = {}
     for i in no_response:
-        format_time1 = i+' 00:00:00'
-        format_time2 = i+' 23:59:59'
+        format_time1 = f'{i} 00:00:00'
+        format_time2 = f'{i} 23:59:59'
         time1 = int(time.mktime(time.strptime(format_time1, "%Y-%m-%d %H:%M:%S")))
         time2 = int(time.mktime(time.strptime(format_time2, "%Y-%m-%d %H:%M:%S")))
         with basicTool.SqliteInit() as mysql_cur:
             for j in chatrooms:
-                temp_list = []
-                sql = "select Message from "+j+" where CreateTime>="+str(time1)+" and CreateTime<="+str(time2)+" and Des=0"
+                sql = f"select Message from {j} where CreateTime>={time1} and CreateTime<={time2} and Des=0"
                 mysql_cur.execute(sql)
                 result = mysql_cur.fetchall()
-                for row in result:
-                    temp_list.append(row[0])
-                if len(temp_list)>0:
+                if temp_list := [row[0] for row in result]:
                     no_response_with[j] = temp_list
 
     no_reply_with = {}
     for i in no_reply:
-        format_time1 = i+' 00:00:00'
-        format_time2 = i+' 23:59:59'
+        format_time1 = f'{i} 00:00:00'
+        format_time2 = f'{i} 23:59:59'
         time1 = int(time.mktime(time.strptime(format_time1, "%Y-%m-%d %H:%M:%S")))
         time2 = int(time.mktime(time.strptime(format_time2, "%Y-%m-%d %H:%M:%S")))
         with basicTool.SqliteInit() as mysql_cur:
             for j in chatrooms:
-                temp_list = []
-                sql = "select Message from "+j+" where CreateTime>="+str(time1)+" and CreateTime<="+str(time2)+" and Des=1"
+                sql = f"select Message from {j} where CreateTime>={time1} and CreateTime<={time2} and Des=1"
                 mysql_cur.execute(sql)
                 result = mysql_cur.fetchall()
-                for row in result:
-                    temp_list.append(row[0])
-                if len(temp_list)>0:
+                if temp_list := [row[0] for row in result]:
                     no_reply_with[j] = temp_list
 
-    with open(filename+".txt","w+",encoding="utf-8") as f:
+    with open(f"{filename}.txt", "w+", encoding="utf-8") as f:
         f.write("未收到回复："+",".join(no_response)+"\n")
         f.write("未回复对方："+",".join(no_reply)+"\n")
         f.write("未获得回复：\n")
         for key,value in no_response_with.items():
             for i in value:
-                f.write(basicTool.GetName(key)+": "+i+"\n")
+                f.write(f"{basicTool.GetName(key)}: {i}" + "\n")
         f.write("\n未回复对方：\n")
         for key,value in no_reply_with.items():
             for i in value:
-                f.write(basicTool.GetName(key)+": "+i+"\n")
+                f.write(f"{basicTool.GetName(key)}: {i}" + "\n")
 if __name__=='__main__':
     # chatrooms_group = basicTool.GetChatrooms(typename=1)
     # chatrooms_single = basicTool.GetChatrooms(typename=2)

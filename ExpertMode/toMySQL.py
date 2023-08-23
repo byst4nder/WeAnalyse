@@ -19,13 +19,15 @@ def GetWXID(chatroom):
             wxid = row[0]
             hmd5 = hashlib.md5()
             hmd5.update(wxid.encode(encoding="utf-8"))
-            wxid_hashed[row[0]] = "Chat_"+hmd5.hexdigest()
-            hashed_wxid["Chat_"+hmd5.hexdigest()] = row[0]
-            raw_data[row[0]] = ["Chat_"+hmd5.hexdigest(),row[1],row[2].decode(encoding="utf-8"),row[3]]
-    if chatroom in hashed_wxid.keys():
-        return hashed_wxid[chatroom]
-    else:
-        return ""
+            wxid_hashed[row[0]] = f"Chat_{hmd5.hexdigest()}"
+            hashed_wxid[f"Chat_{hmd5.hexdigest()}"] = row[0]
+            raw_data[row[0]] = [
+                f"Chat_{hmd5.hexdigest()}",
+                row[1],
+                row[2].decode(encoding="utf-8"),
+                row[3],
+            ]
+    return hashed_wxid.get(chatroom, "")
 
 def GetRowNum(chatroom,db="sqlite",Des=2):
     '''
@@ -35,9 +37,9 @@ def GetRowNum(chatroom,db="sqlite",Des=2):
     if db=="mysql":
         with sqlInit.MysqlInit() as mysql_cur:
             if Des == 2:
-                sql = "select count(*) from "+chatroom
+                sql = f"select count(*) from {chatroom}"
             else:
-                sql = "select count(*) from "+chatroom+" where Des="+str(Des)
+                sql = f"select count(*) from {chatroom} where Des={str(Des)}"
             mysql_cur.execute(sql)
             fetchResult = mysql_cur.fetchall()
             for row in fetchResult:
@@ -45,9 +47,9 @@ def GetRowNum(chatroom,db="sqlite",Des=2):
     else:
         with sqlInit.SqliteInit() as sqlite_cur:
             if Des == 2:
-                sql = "select count(*) from "+chatroom
+                sql = f"select count(*) from {chatroom}"
             else:
-                sql = "select count(*) from "+chatroom+" where Des="+str(Des)
+                sql = f"select count(*) from {chatroom} where Des={str(Des)}"
             fetchResult = sqlite_cur.execute(sql)
             for row in fetchResult:
                 rowNum = row[0]
@@ -65,15 +67,12 @@ def ChatroomType(chatroom):
     if chatroom in special_chatroom:
         return 3
     elif chatroom in custom_chatroom:
-        return 3 
+        return 3
     else:
         if "@chatroom" in GetWXID(chatroom): #群组
             return 1
         else:
-            if "gh_" == GetWXID(chatroom)[:3]: #公众号
-                return 3
-            else: #个人
-                return 2
+            return 3 if GetWXID(chatroom)[:3] == "gh_" else 2
 
 def InsertFriends(chatroom, Type):
     '''
@@ -91,12 +90,14 @@ def GetGroupData(chatroom):
     pattern2 = re.compile('"(.*?)"')
     well_tempered_data = []
     with sqlInit.SqliteInit() as sqlite_cur:
-        result = sqlite_cur.execute("SELECT Type, CreateTime, Message, Des from "+chatroom)
+        result = sqlite_cur.execute(
+            f"SELECT Type, CreateTime, Message, Des from {chatroom}"
+        )
         for row in result:
             Type = row[0]
             CreateTime = row[1]
             Des = row[3]
-            if (Type == 10000) or (Type == 10002) or (Type==1000):
+            if Type in [10000, 10002, 1000]:
                 if ("撤回" in row[2]) or ("recalled a message" in row[2]):
                     Message = "撤回消息"
                     if(len(pattern2.findall(row[2]))>0):
@@ -119,13 +120,13 @@ def GetGroupData(chatroom):
                     Message = row[2]
             elif len(pattern1.findall(row[2]))>0:
                 SentFrom = pattern1.findall(row[2])[0]
-                Message = row[2].replace(SentFrom+":",'').replace("\n","")
+                Message = row[2].replace(f"{SentFrom}:", '').replace("\n", "")
             else:
                 SentFrom = row[2].split(":",1)[0]
                 Message = row[2].split(":",1)[1].replace("\n","")
-            
+
             well_tempered_data.append([Type,CreateTime,SentFrom,Message,Des])
-    sql = "INSERT INTO "+chatroom+"(Type,CreateTime,SentFrom,Message,Des) VALUES(%s,%s,%s,%s,%s)"
+    sql = f"INSERT INTO {chatroom}(Type,CreateTime,SentFrom,Message,Des) VALUES(%s,%s,%s,%s,%s)"
     with sqlInit.MysqlInit() as mysql_cur:
         for line in well_tempered_data:
             mysql_cur.execute(sql,line)
@@ -137,22 +138,24 @@ def GetOthersData(chatroom):
     pattern1 = re.compile('"(.*?)"')
     well_tempered_data = []
     with sqlInit.SqliteInit() as sqlite_cur:
-        result = sqlite_cur.execute("SELECT Type, CreateTime, Message, Des from "+chatroom)
+        result = sqlite_cur.execute(
+            f"SELECT Type, CreateTime, Message, Des from {chatroom}"
+        )
         for row in result:
             Type = row[0]
             CreateTime = row[1]
             Des = row[3]
-            if (Type == 10000) or (Type == 10002):
+            if Type in [10000, 10002]:
                 if ("撤回" in row[2]) or ("recalled a message" in row[2]):
                     Message = "撤回消息"
-                    if not (len(pattern1.findall(row[2]))>0):
+                    if len(pattern1.findall(row[2])) <= 0:
                         Des = 0
                 else:
                     Message = row[2].replace("\n","")
             else:
                 Message = row[2].replace("\n","")
             well_tempered_data.append([Type,CreateTime,Message,Des])
-    sql = "INSERT INTO "+chatroom+"(Type,CreateTime,Message,Des) VALUES(%s,%s,%s,%s)"
+    sql = f"INSERT INTO {chatroom}(Type,CreateTime,Message,Des) VALUES(%s,%s,%s,%s)"
     with sqlInit.MysqlInit() as mysql_cur:
         for line in well_tempered_data:
             mysql_cur.execute(sql,line)
@@ -166,19 +169,19 @@ def GetGeoData():
         fetchResult1 = sqlite_cur.execute("select code,name from area")
         for row in fetchResult1:
             if len(row[1])<3:
-                if row[1] in geo_dict.keys():
+                if row[1] in geo_dict:
                     if len(geo_dict[row[1]])>=len(row[0]):
                         geo_dict[row[1]] = row[0]
                 else:
                     geo_dict[row[1]] = row[0]
             elif len(row[1])==3:
-                if row[1][:2] in geo_dict.keys():
+                if row[1][:2] in geo_dict:
                     if len(geo_dict[row[1][:2]])>=len(row[0]):
                         geo_dict[row[1][:2]] = row[0]
                 else:
                     geo_dict[row[1][:2]] = row[0]
             elif len(row[1])>3:
-                if row[1][:3] in geo_dict.keys():
+                if row[1][:3] in geo_dict:
                     if len(geo_dict[row[1][:3]])>=len(row[0]):
                         geo_dict[row[1][:3]] = row[0]
                 else:
@@ -186,19 +189,19 @@ def GetGeoData():
         fetchResult2 = sqlite_cur.execute("select code,name from city")
         for row in fetchResult2:
             if len(row[1])<3:
-                if row[1] in geo_dict.keys():
+                if row[1] in geo_dict:
                     if len(geo_dict[row[1]])>=len(row[0]):
                         geo_dict[row[1]] = row[0]
                 else:
                     geo_dict[row[1]] = row[0]
             elif len(row[1])==3:
-                if row[1][:2] in geo_dict.keys():
+                if row[1][:2] in geo_dict:
                     if len(geo_dict[row[1][:2]])>=len(row[0]):
                         geo_dict[row[1][:2]] = row[0]
                 else:
                     geo_dict[row[1][:2]] = row[0]
             elif len(row[1])>3:
-                if row[1][:3] in geo_dict.keys():
+                if row[1][:3] in geo_dict:
                     if len(geo_dict[row[1][:3]])>=len(row[0]):
                         geo_dict[row[1][:3]] = row[0]
                 else:
@@ -206,19 +209,19 @@ def GetGeoData():
         fetchResult3 = sqlite_cur.execute("select code,name from province")
         for row in fetchResult3:
             if len(row[1])<3:
-                if row[1] in geo_dict.keys():
+                if row[1] in geo_dict:
                     if len(geo_dict[row[1]])>=len(row[0]):
                         geo_dict[row[1]] = row[0]
                 else:
                     geo_dict[row[1]] = row[0]
             elif len(row[1])==3:
-                if row[1][:2] in geo_dict.keys():
+                if row[1][:2] in geo_dict:
                     if len(geo_dict[row[1][:2]])>=len(row[0]):
                         geo_dict[row[1][:2]] = row[0]
                 else:
                     geo_dict[row[1][:2]] = row[0]
             elif len(row[1])>3:
-                if row[1][:3] in geo_dict.keys():
+                if row[1][:3] in geo_dict:
                     if len(geo_dict[row[1][:3]])>=len(row[0]):
                         geo_dict[row[1][:3]] = row[0]
                 else:
@@ -226,19 +229,19 @@ def GetGeoData():
         fetchResult4 = sqlite_cur.execute("select code,name from village")
         for row in fetchResult4:
             if len(row[1])<3:
-                if row[1] in geo_dict.keys():
+                if row[1] in geo_dict:
                     if len(geo_dict[row[1]])>=len(row[0]):
                         geo_dict[row[1]] = row[0]
                 else:
                     geo_dict[row[1]] = row[0]
             elif len(row[1])==3:
-                if row[1][:2] in geo_dict.keys():
+                if row[1][:2] in geo_dict:
                     if len(geo_dict[row[1][:2]])>=len(row[0]):
                         geo_dict[row[1][:2]] = row[0]
                 else:
                     geo_dict[row[1][:2]] = row[0]
             elif len(row[1])>3:
-                if row[1][:3] in geo_dict.keys():
+                if row[1][:3] in geo_dict:
                     if len(geo_dict[row[1][:3]])>=len(row[0]):
                         geo_dict[row[1][:3]] = row[0]
                 else:
@@ -254,7 +257,9 @@ def CreateTable(chatroom = "",type = 4):
     创建表
     type：1：群聊，4：联系人表，5：地理信息表，其它：单聊或公众号
     '''
-    sql_group = "create table "+chatroom+"""(
+    sql_group = (
+        f"create table {chatroom}"
+        + """(
                     id             int(11)      unsigned   NOT NULL  AUTO_INCREMENT,
                     Type           int(4)       unsigned   NOT NULL,
                     CreateTime     int(11)      unsigned   NOT NULL,
@@ -263,7 +268,10 @@ def CreateTable(chatroom = "",type = 4):
                     Des            tinyint(1)              NOT NULL,
                     PRIMARY KEY ( id ))
                     ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"""
-    sql_others = "create table "+chatroom+"""(
+    )
+    sql_others = (
+        f"create table {chatroom}"
+        + """(
                     id             int(11)      unsigned   NOT NULL  AUTO_INCREMENT,
                     Type           int(4)       unsigned   NOT NULL,
                     CreateTime     int(11)      unsigned   NOT NULL,
@@ -271,6 +279,7 @@ def CreateTable(chatroom = "",type = 4):
                     Des            tinyint(1)              NOT NULL,
                     PRIMARY KEY ( id ))
                     ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"""
+    )
 
     sql_friends = """create table Friends(
                     id             int(11)      unsigned   NOT NULL  AUTO_INCREMENT,
@@ -299,7 +308,7 @@ def CreateTable(chatroom = "",type = 4):
                 mysql_cur.execute("DROP TABLE IF EXISTS Geodata")
                 mysql_cur.execute(sql_geodata)
         else:
-            mysql_cur.execute("DROP TABLE IF EXISTS "+chatroom)
+            mysql_cur.execute(f"DROP TABLE IF EXISTS {chatroom}")
             if type == 1:
                 mysql_cur.execute(sql_group)
             else:
@@ -310,21 +319,18 @@ def GetAllChatrooms(rownum=0):
     rownum为仅获取条数大于等于这个数的聊天记录，为0时获取所有聊天记录
     '''
     chatrooms_all = []
-    chatrooms = []
     with sqlInit.SqliteInit() as sqlite_cur:
         find_chatrooms = "select name from sqlite_master where type='table'"
         result = sqlite_cur.execute(find_chatrooms)
-        for row in result:
-            if row[0].find("Chat_")!=-1:
-                chatrooms_all.append(row[0])
+        chatrooms_all.extend(row[0] for row in result if row[0].find("Chat_")!=-1)
     if rownum==0:
         return chatrooms_all
-    else:
-        for chatroom in chatrooms_all:
-            rowNum = GetRowNum(chatroom)
-            if rowNum>=rownum:
-                chatrooms.append(chatroom)
-        return chatrooms
+    chatrooms = []
+    for chatroom in chatrooms_all:
+        rowNum = GetRowNum(chatroom)
+        if rowNum>=rownum:
+            chatrooms.append(chatroom)
+    return chatrooms
 
 if __name__=='__main__':
     #需要排除的
@@ -332,7 +338,7 @@ if __name__=='__main__':
     chatrooms = GetAllChatrooms(rownum=0)
     for i in notuse:
         chatrooms.remove(i)
-    print("将要添加的聊天数："+str(len(chatrooms)))
+    print(f"将要添加的聊天数：{len(chatrooms)}")
     CreateTable(chatroom = "",type=4) #联系人表
     for chatroom in chatrooms:
         print(chatroom)

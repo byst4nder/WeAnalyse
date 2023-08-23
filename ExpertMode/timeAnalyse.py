@@ -19,8 +19,15 @@ def TimeAll(chartname="",filename="time_ana_all",typename=0,Des=2):
     message_list = []
 
     for chatroom in chatrooms:
-        for row in getChat.GetData(chatroom=chatroom,columns=["id","CreateTime"],Desname=Des):
-            message_list.append(row)
+        message_list.extend(
+            iter(
+                getChat.GetData(
+                    chatroom=chatroom,
+                    columns=["id", "CreateTime"],
+                    Desname=Des,
+                )
+            )
+        )
     Normal(message_list,chartname=chartname,filename=filename)
 
 def TimeSingle(chatroom,chartname="",filename="time_ana_single",Des=2):
@@ -30,9 +37,11 @@ def TimeSingle(chatroom,chartname="",filename="time_ana_single",Des=2):
     filename：str，文件名，存储在output文件夹下
     Des：0：发出，1：接收，2：全部
     '''
-    message_list = []
-    for row in getChat.GetData(chatroom=chatroom,columns=["id","CreateTime"],Desname=Des):
-        message_list.append(row)
+    message_list = list(
+        getChat.GetData(
+            chatroom=chatroom, columns=["id", "CreateTime"], Desname=Des
+        )
+    )
     Normal(message_list,chartname=chartname,filename=filename)
     
 def Normal(params,chartname="",filename="time_ana"):
@@ -51,7 +60,7 @@ def Normal(params,chartname="",filename="time_ana"):
         weeks = rawtime.weekday()
         output_data = (row[0],weeks,hours,minutes)
         time_list.append(output_data)
-    print("总条数："+str(counter))
+    print(f"总条数：{str(counter)}")
 
     time_tree_5min = np.zeros((7,24,12))
     time_tree_10min = np.zeros((7,24,6))
@@ -70,8 +79,7 @@ def Normal(params,chartname="",filename="time_ana"):
     week_title = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"]
     for i in week_title:
         for j in range(24):
-            for k in range(12):
-                days_5min.append(i+" "+str(j)+":"+str(k*5).zfill(2))
+            days_5min.extend(f"{i} {str(j)}:{str(k * 5).zfill(2)}" for k in range(12))
     # for i in week_title:
     #     for j in range(24):
     #         for k in range(6):
@@ -80,11 +88,10 @@ def Normal(params,chartname="",filename="time_ana"):
     #     for j in range(24):
     #         for k in range(2):
     #             days_30min.append(i+" "+str(j)+":"+str(k*30).zfill(2))
-    
+
     for i in range(7):
         for j in range(24):
-            for k in range(12):
-                range_5min.append(time_tree_5min[i,j,k])
+            range_5min.extend(time_tree_5min[i,j,k] for k in range(12))
     # for i in range(7):
     #     for j in range(24):
     #         for k in range(6):
@@ -139,22 +146,25 @@ def Normal(params,chartname="",filename="time_ana"):
         is_xaxislabel_align=True
     )
 
-    bar.render(path="../../output/"+filename+".html")
-    bar.render(path="../../output/"+filename+".pdf")
+    bar.render(path=f"../../output/{filename}.html")
+    bar.render(path=f"../../output/{filename}.pdf")
 
 def RowLine():
     '''
     统计聊天条数走势
     '''
     chatrooms = getChat.GetChatrooms(typename=2)
-    chatrooms_inuse = []
-    for chatroom in chatrooms:
-        if toMySQL.GetRowNum(chatroom,"mysql")>=5000:
-            chatrooms_inuse.append(chatroom)
+    chatrooms_inuse = [
+        chatroom
+        for chatroom in chatrooms
+        if toMySQL.GetRowNum(chatroom, "mysql") >= 5000
+    ]
     id_time_dict = {}
-    for i in range(len(chatrooms_inuse)):
-        temp_arr = np.array(getChat.GetData(chatrooms_inuse[i],["id","CreateTime"],2),dtype="int")
-        id_time_dict[chatrooms_inuse[i]] = np.append(temp_arr[temp_arr[:,0] % 20 == 1],[temp_arr[-1,:]],axis=0)
+    for item in chatrooms_inuse:
+        temp_arr = np.array(getChat.GetData(item, ["id","CreateTime"], 2), dtype="int")
+        id_time_dict[item] = np.append(
+            temp_arr[temp_arr[:, 0] % 20 == 1], [temp_arr[-1, :]], axis=0
+        )
 
     f = plt.figure(figsize=(16, 9))
     plt.grid(True)

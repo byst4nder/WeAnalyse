@@ -32,14 +32,14 @@ def BaseAnalyse():
     recall_from_rate = {}
     chatrooms_group = getChat.GetChatrooms(typename=1)
     chatrooms_single = getChat.GetChatrooms(typename=2)
-    print("个人总数："+str(len(chatrooms_single)))
-    print("群聊总数："+str(len(chatrooms_group)))
+    print(f"个人总数：{len(chatrooms_single)}")
+    print(f"群聊总数：{len(chatrooms_group)}")
     chatrooms_all = chatrooms_group + chatrooms_single
     message_length_to = []
     message_length_from = []
     for chatroom in chatrooms_single:
-        sql3 = "SELECT AVG(CHAR_LENGTH(Message)) FROM "+chatroom+" WHERE Type=1 and Des=0"
-        sql4 = "SELECT AVG(CHAR_LENGTH(Message)) FROM "+chatroom+" WHERE Type=1 and Des=1"
+        sql3 = f"SELECT AVG(CHAR_LENGTH(Message)) FROM {chatroom} WHERE Type=1 and Des=0"
+        sql4 = f"SELECT AVG(CHAR_LENGTH(Message)) FROM {chatroom} WHERE Type=1 and Des=1"
         with sqlInit.MysqlInit() as mysql_cur:
             mysql_cur.execute(sql3)
             result = mysql_cur.fetchone()
@@ -56,8 +56,8 @@ def BaseAnalyse():
         counter1 += getChat.GetRowNum(chatroom,Des=0)
         counter3 += getChat.GetRowNum(chatroom,Des=1)
     for chatroom in chatrooms_single:
-        sql1 = "select count(*) from "+chatroom+" where Message='撤回消息' and Des=0"
-        sql2 = "select count(*) from "+chatroom+" where Message='撤回消息' and Des=1"
+        sql1 = f"select count(*) from {chatroom} where Message='撤回消息' and Des=0"
+        sql2 = f"select count(*) from {chatroom} where Message='撤回消息' and Des=1"
 
         counter2 += getChat.GetRowNum(chatroom,Des=0)
         counter4 += getChat.GetRowNum(chatroom,Des=1)
@@ -87,12 +87,12 @@ def BaseAnalyse():
     sorted_recall_from = sorted(recall_from_rate.items(), key=operator.itemgetter(1),reverse=True)
     print(sorted_recall_to)
     print(sorted_recall_from)
-    print("总共发出："+str(counter1))
-    print("总共发出（个人）："+str(counter2))
-    print("总共接收："+str(counter3))
-    print("总共接收（个人）："+str(counter4))
-    print("我总共撤回："+str(recall_to_sum))
-    print("总共被撤回："+str(recall_from_sum))
+    print(f"总共发出：{str(counter1)}")
+    print(f"总共发出（个人）：{str(counter2)}")
+    print(f"总共接收：{str(counter3)}")
+    print(f"总共接收（个人）：{str(counter4)}")
+    print(f"我总共撤回：{str(recall_to_sum)}")
+    print(f"总共被撤回：{str(recall_from_sum)}")
 def MostEmoji():
     chatrooms_group = getChat.GetChatrooms(typename=1)
     chatrooms_single = getChat.GetChatrooms(typename=2)
@@ -101,28 +101,28 @@ def MostEmoji():
     emoji_dict_to = {}
     emoji_dict_from = {}
     for chatroom in chatrooms_all:
-        sql = "SELECT Message,CreateTime as num FROM "+chatroom+" WHERE Type=47 and Des=0"
+        sql = f"SELECT Message,CreateTime as num FROM {chatroom} WHERE Type=47 and Des=0"
         with sqlInit.MysqlInit() as mysql_cur:
             mysql_cur.execute(sql)
             result = mysql_cur.fetchall()
             for row in result:
                 emoji_md5 = pattern.findall(row[0])[0]
                 if len(emoji_md5)>0:
-                    if emoji_md5 in emoji_dict_to.keys():
+                    if emoji_md5 in emoji_dict_to:
                         emoji_dict_to[emoji_md5][0] += 1
                     else:
                         emoji_dict_to[emoji_md5] = [1,chatroom,row[1]]
     sorted_list_to = sorted(emoji_dict_to.items(), key=lambda x: x[1][0],reverse=True)
     print(sorted_list_to)
     for chatroom in chatrooms_single:
-        sql = "SELECT Message,CreateTime as num FROM "+chatroom+" WHERE Type=47 and Des=1"
+        sql = f"SELECT Message,CreateTime as num FROM {chatroom} WHERE Type=47 and Des=1"
         with sqlInit.MysqlInit() as mysql_cur:
             mysql_cur.execute(sql)
             result = mysql_cur.fetchall()
             for row in result:
                 emoji_md5 = pattern.findall(row[0])[0]
                 if len(emoji_md5)>0:
-                    if emoji_md5 in emoji_dict_from.keys():
+                    if emoji_md5 in emoji_dict_from:
                         emoji_dict_from[emoji_md5][0] += 1
                     else:
                         emoji_dict_from[emoji_md5] = [1,chatroom,row[1]]
@@ -133,13 +133,13 @@ def TypeAnalyse():
     single_type_counter_to = {}
     single_type_counter_from = {}
     for i in chatrooms_single:
-        sql1 = "SELECT Type,count(*) as num FROM "+i+" WHERE Des=0 GROUP BY Type"
-        sql2 = "SELECT Type,count(*) as num FROM "+i+" WHERE Des=1 GROUP BY Type"
+        sql1 = f"SELECT Type,count(*) as num FROM {i} WHERE Des=0 GROUP BY Type"
+        sql2 = f"SELECT Type,count(*) as num FROM {i} WHERE Des=1 GROUP BY Type"
         with sqlInit.MysqlInit() as mysql_cur:
             mysql_cur.execute(sql1)
             result = mysql_cur.fetchall()
             for j in result:
-                if j[0] in single_type_counter_to.keys():
+                if j[0] in single_type_counter_to:
                     single_type_counter_to[j[0]] += j[1]
                 else:
                     single_type_counter_to[j[0]] = j[1]
@@ -147,32 +147,32 @@ def TypeAnalyse():
             mysql_cur.execute(sql2)
             result = mysql_cur.fetchall()
             for j in result:
-                if j[0] in single_type_counter_from.keys():
+                if j[0] in single_type_counter_from:
                     single_type_counter_from[j[0]] += j[1]
                 else:
                     single_type_counter_from[j[0]] = j[1]
 
-    if 10002 in single_type_counter_to.keys():
-        if not 10000 in single_type_counter_to.keys():
+    if 10002 in single_type_counter_to:
+        if 10000 not in single_type_counter_to:
             single_type_counter_to[10000] = single_type_counter_to[10002]
         else:
             single_type_counter_to[10000] += single_type_counter_to[10002]
             del single_type_counter_to[10002]
-    if 10002 in single_type_counter_from.keys():
-        if not 10000 in single_type_counter_from.keys():
+    if 10002 in single_type_counter_from:
+        if 10000 not in single_type_counter_from:
             single_type_counter_from[10000] = single_type_counter_from[10002]
         else:
             single_type_counter_from[10000] += single_type_counter_from[10002]
             del single_type_counter_from[10002]
 
-    if 62 in single_type_counter_to.keys():
-        if not 43 in single_type_counter_to.keys():
+    if 62 in single_type_counter_to:
+        if 43 not in single_type_counter_to:
             single_type_counter_to[43] = single_type_counter_to[62]
         else:
             single_type_counter_to[43] += single_type_counter_to[62]
             del single_type_counter_to[62]
-    if 62 in single_type_counter_from.keys():
-        if not 43 in single_type_counter_from.keys():
+    if 62 in single_type_counter_from:
+        if 43 not in single_type_counter_from:
             single_type_counter_from[43] = single_type_counter_from[62]
         else:
             single_type_counter_from[43] += single_type_counter_from[62]
@@ -213,11 +213,8 @@ def RowAnalyse():
     个人
     '''
     chatrooms = getChat.GetChatrooms(typename=2)
-    RowNum = {}
-
-    print("总聊天数："+str(len(chatrooms)))
-    for chatroom in chatrooms:
-        RowNum[chatroom]=toMySQL.GetRowNum(chatroom)
+    print(f"总聊天数：{len(chatrooms)}")
+    RowNum = {chatroom: toMySQL.GetRowNum(chatroom) for chatroom in chatrooms}
     # sorted_list = sorted(RowNum.items(), key=operator.itemgetter(1),reverse=True)
     # f = open("../../rows.txt","w+",encoding="utf-8")
     # for i in sorted_list:
@@ -265,7 +262,7 @@ def LateChat():
                     Message = j[1]
                     if j[2] == 0 and j[3] == 1:
                         my_message.append(Message)
-                    f.write(i+","+str(j[2])+","+CreateTime+","+Message+"\n")
+                    f.write(f"{i},{str(j[2])},{CreateTime},{Message}" + "\n")
     wordcloudAnalyse.Normal(my_message,filename = "WC_to_LateChat", maxwords = 30, title="")
     
 def MostGroup():
@@ -273,15 +270,18 @@ def MostGroup():
     发信息最多的群聊
     '''
     chatrooms_group = getChat.GetChatrooms(typename=1)
-    group_row_dict = {}
-    for i in chatrooms_group:
-        group_row_dict[i] = toMySQL.GetRowNum(i,db="mysql",Des=0)
+    group_row_dict = {
+        i: toMySQL.GetRowNum(i, db="mysql", Des=0) for i in chatrooms_group
+    }
     sorted_list = sorted(group_row_dict.items(), key=operator.itemgetter(1),reverse=True)
     print(sorted_list[0])
-    message_list = []
-    for row in getChat.GetData(sorted_list[0][0],["Message","Type"],Desname=0):
-        if row[1]==1:
-            message_list.append(row[0])
+    message_list = [
+        row[0]
+        for row in getChat.GetData(
+            sorted_list[0][0], ["Message", "Type"], Desname=0
+        )
+        if row[1] == 1
+    ]
     wordcloudAnalyse.Normal(message_list,filename = "WC_to_MostGroup", maxwords = 50, title="")
     
 def MostDay(filename = "mostday_to",Des = 0):
@@ -301,9 +301,9 @@ def MostDay(filename = "mostday_to",Des = 0):
             else:
                 CreateTime_counter[CreateTime] = 1
     sorted_list = sorted(CreateTime_counter.items(), key=operator.itemgetter(1),reverse=True)
-    
-    format_time1 = sorted_list[0][0]+' 00:00:00'
-    format_time2 = sorted_list[0][0]+' 23:59:59'
+
+    format_time1 = f'{sorted_list[0][0]} 00:00:00'
+    format_time2 = f'{sorted_list[0][0]} 23:59:59'
     time1 = int(time.mktime(time.strptime(format_time1, "%Y-%m-%d %H:%M:%S")))
     time2 = int(time.mktime(time.strptime(format_time2, "%Y-%m-%d %H:%M:%S")))
     chat_with = {}
@@ -312,7 +312,7 @@ def MostDay(filename = "mostday_to",Des = 0):
     with sqlInit.MysqlInit() as mysql_cur:
         for i in chatrooms_all:
             temp_list = []
-            sql = "select Message,Des,Type from "+i+" where CreateTime>="+str(time1)+" and CreateTime<="+str(time2)
+            sql = f"select Message,Des,Type from {i} where CreateTime>={time1} and CreateTime<={time2}"
             mysql_cur.execute(sql)
             result = mysql_cur.fetchall()
             for row in result:
@@ -320,13 +320,13 @@ def MostDay(filename = "mostday_to",Des = 0):
                     temp_list.append(row[0])
                 if row[1] == Des and row[2] == 1:
                     my_message.append(row[0])
-            if len(temp_list)>0:
+            if temp_list:
                 chat_with[i] = temp_list
 
-    with open("../../output/"+filename+".txt","w+",encoding="utf-8") as f:
+    with open(f"../../output/{filename}.txt", "w+", encoding="utf-8") as f:
         for key,value in chat_with.items():
             for i in value:
-                f.write(key+","+i+"\n")
+                f.write(f"{key},{i}" + "\n")
 
     # wordcloudAnalyse.Normal(my_message,filename = "WC_to_MostDay", maxwords = 10, title=sorted_list[0][0])
 
