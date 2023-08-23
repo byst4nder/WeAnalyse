@@ -59,9 +59,7 @@ def Normal(params,chartname="",filename="usage_ana"):
     chartname：str，图表名
     filename：str，文件名，存储在output文件夹下
     '''
-    day_counter = []
-    for i in params:
-        day_counter.append(i[1])
+    day_counter = [i[1] for i in params]
     heatmap = HeatMap(chartname, "", width=1500)
 
     heatmap.add(
@@ -83,8 +81,8 @@ def Normal(params,chartname="",filename="usage_ana"):
         is_piecewise=True,
     )
 
-    heatmap.render(path="../../output/"+filename+".html")
-    heatmap.render(path="../../output/"+filename+".pdf")
+    heatmap.render(path=f"../../output/{filename}.html")
+    heatmap.render(path=f"../../output/{filename}.pdf")
 
 def Lonelydude(filename="lonelydude",typename=2):
     '''
@@ -117,53 +115,55 @@ def Lonelydude(filename="lonelydude",typename=2):
                 CreateTime_counter_from[CreateTime] = 1
     no_response = []
     no_reply = []
-    no_response = [i for i in CreateTime_counter_to.keys() if i not in CreateTime_counter_from.keys()]
-    no_reply = [i for i in CreateTime_counter_from.keys() if i not in CreateTime_counter_to.keys()]
+    no_response = [
+        i
+        for i in CreateTime_counter_to
+        if i not in CreateTime_counter_from.keys()
+    ]
+    no_reply = [
+        i
+        for i in CreateTime_counter_from
+        if i not in CreateTime_counter_to.keys()
+    ]
     print(no_response)
     print(no_reply)
     no_response_with = {}
     for i in no_response:
-        format_time1 = i+' 00:00:00'
-        format_time2 = i+' 23:59:59'
+        format_time1 = f'{i} 00:00:00'
+        format_time2 = f'{i} 23:59:59'
         time1 = int(time.mktime(time.strptime(format_time1, "%Y-%m-%d %H:%M:%S")))
         time2 = int(time.mktime(time.strptime(format_time2, "%Y-%m-%d %H:%M:%S")))
         with sqlInit.MysqlInit() as mysql_cur:
             for j in chatrooms:
-                temp_list = []
-                sql = "select Message from "+j+" where CreateTime>="+str(time1)+" and CreateTime<="+str(time2)+" and Des=0"
+                sql = f"select Message from {j} where CreateTime>={time1} and CreateTime<={time2} and Des=0"
                 mysql_cur.execute(sql)
                 result = mysql_cur.fetchall()
-                for row in result:
-                    temp_list.append(row[0])
-                if len(temp_list)>0:
+                if temp_list := [row[0] for row in result]:
                     no_response_with[j] = temp_list
 
     no_reply_with = {}
     for i in no_reply:
-        format_time1 = i+' 00:00:00'
-        format_time2 = i+' 23:59:59'
+        format_time1 = f'{i} 00:00:00'
+        format_time2 = f'{i} 23:59:59'
         time1 = int(time.mktime(time.strptime(format_time1, "%Y-%m-%d %H:%M:%S")))
         time2 = int(time.mktime(time.strptime(format_time2, "%Y-%m-%d %H:%M:%S")))
         with sqlInit.MysqlInit() as mysql_cur:
             for j in chatrooms:
-                temp_list = []
-                sql = "select Message from "+j+" where CreateTime>="+str(time1)+" and CreateTime<="+str(time2)+" and Des=1"
+                sql = f"select Message from {j} where CreateTime>={time1} and CreateTime<={time2} and Des=1"
                 mysql_cur.execute(sql)
                 result = mysql_cur.fetchall()
-                for row in result:
-                    temp_list.append(row[0])
-                if len(temp_list)>0:
+                if temp_list := [row[0] for row in result]:
                     no_reply_with[j] = temp_list
 
-    with open("../../output/"+filename+".txt","w+",encoding="utf-8") as f:
+    with open(f"../../output/{filename}.txt", "w+", encoding="utf-8") as f:
         f.write("未获得回复：\n")
         for key,value in no_response_with.items():
             for i in value:
-                f.write(key+","+i+"\n")
+                f.write(f"{key},{i}" + "\n")
         f.write("\n未回复对方：\n")
         for key,value in no_reply_with.items():
             for i in value:
-                f.write(key+","+i+"\n")
+                f.write(f"{key},{i}" + "\n")
 if __name__=='__main__':
     # Lonelydude()
     # UsageAll(chartname="使用情况-发出（全部）",filename="usage_ana_to_all",typename=0,Des=0)

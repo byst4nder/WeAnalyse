@@ -29,33 +29,31 @@ def GetWXID(chatroom):
             wxid = row[0]
             hmd5 = hashlib.md5()
             hmd5.update(wxid.encode(encoding="utf-8"))
-            wxid_hashed[row[0]] = "Chat_"+hmd5.hexdigest()
-            hashed_wxid["Chat_"+hmd5.hexdigest()] = row[0]
-            raw_data[row[0]] = ["Chat_"+hmd5.hexdigest(),row[1],row[2].decode(encoding="utf-8"),row[3]]
-    if chatroom in hashed_wxid.keys():
-        return hashed_wxid[chatroom]
-    else:
-        return ""
+            wxid_hashed[row[0]] = f"Chat_{hmd5.hexdigest()}"
+            hashed_wxid[f"Chat_{hmd5.hexdigest()}"] = row[0]
+            raw_data[row[0]] = [
+                f"Chat_{hmd5.hexdigest()}",
+                row[1],
+                row[2].decode(encoding="utf-8"),
+                row[3],
+            ]
+    return hashed_wxid.get(chatroom, "")
 def GetName(attr):
     '''
     返回昵称或群名称
     '''
-    if "Chat_" in attr:
-        WXID = GetWXID(attr)
-    else:
-        WXID = attr
+    WXID = GetWXID(attr) if "Chat_" in attr else attr
     name = WXID
     with SqliteInit(db='./data/WCDB_Contact.sqlite') as sqlite_cur:
-        try:
-            sqlite_cur.execute("select dbContactRemark,dbContactChatRoom from Friend where userName='"+WXID+"'")
+        with contextlib.suppress(Exception):
+            sqlite_cur.execute(
+                f"select dbContactRemark,dbContactChatRoom from Friend where userName='{WXID}'"
+            )
             fetchResult = sqlite_cur.fetchall()
             if fetchResult != []:
                 if fetchResult[0][0] != None:
                     namelength = bytearray(fetchResult[0][0])[1]
                     name = bytearray(fetchResult[0][0])[2:2+namelength].decode("utf-8")
-        except Exception:
-            pass
-        
     return name
 
 def GetRowNum(chatroom,Des=2,start_time="1970-01-02",end_time=""):
@@ -71,19 +69,19 @@ def GetRowNum(chatroom,Des=2,start_time="1970-01-02",end_time=""):
         end_time_stamp = int(time.time())
     else:
         end_time_stamp = int(time.mktime(time.strptime(end_time, "%Y-%m-%d")))
-    
+
     with SqliteInit() as sqlite_cur:
         if Des == 2:
-            sql = "select count(*) from "+chatroom+" where CreateTime>=? and CreateTime<=?"
+            sql = f"select count(*) from {chatroom} where CreateTime>=? and CreateTime<=?"
             fetchResult = sqlite_cur.execute(sql,(str(start_time_stamp),str(end_time_stamp)))
         else:
-            sql = "select count(*) from "+chatroom+" where Des=? and CreateTime>=? and CreateTime<=?"
+            sql = f"select count(*) from {chatroom} where Des=? and CreateTime>=? and CreateTime<=?"
             fetchResult = sqlite_cur.execute(sql,(str(Des),str(start_time_stamp),str(end_time_stamp)))
         for row in fetchResult:
             rowNum = row[0]
     return int(rowNum)
 def getAvgLen(chatroom, Des=2, start_time="1970-01-02", end_time=""):
-    sql = "SELECT AVG(LENGTH(Message)) FROM "+chatroom+" WHERE Type=1 and Des=? and CreateTime>=? and CreateTime<=?"
+    sql = f"SELECT AVG(LENGTH(Message)) FROM {chatroom} WHERE Type=1 and Des=? and CreateTime>=? and CreateTime<=?"
 
     #选择时间段
     start_time_stamp =  int(time.mktime(time.strptime(start_time, "%Y-%m-%d")))
@@ -91,7 +89,7 @@ def getAvgLen(chatroom, Des=2, start_time="1970-01-02", end_time=""):
         end_time_stamp = int(time.time())
     else:
         end_time_stamp = int(time.mktime(time.strptime(end_time, "%Y-%m-%d")))
-    
+
     with SqliteInit() as sqlite_cur:
         if Des == 2:
             sqlite_cur.execute(sql,(str(start_time_stamp),str(end_time_stamp)))
@@ -115,10 +113,7 @@ def ChatroomType(chatroom):
         if "@chatroom" in GetWXID(chatroom): #群组
             return 1
         else:
-            if "gh_" == GetWXID(chatroom)[:3]: #公众号
-                return 3
-            else: #个人
-                return 2
+            return 3 if GetWXID(chatroom)[:3] == "gh_" else 2
 
 def GetGroupData(chatroom,columns=["id","Type","CreateTime","SentFrom","Message","Des"],Desname=2,start_time="1970-01-02",end_time=""):
     '''
@@ -143,10 +138,10 @@ def GetGroupData(chatroom,columns=["id","Type","CreateTime","SentFrom","Message"
 
     with SqliteInit() as sqlite_cur:
         if Desname==2:
-            sql = "SELECT Type, CreateTime, Message, Des from "+chatroom+" where CreateTime>=? and CreateTime<=?"
+            sql = f"SELECT Type, CreateTime, Message, Des from {chatroom} where CreateTime>=? and CreateTime<=?"
             result = sqlite_cur.execute(sql,(str(start_time_stamp),str(end_time_stamp)))
         else:
-            sql = "SELECT Type, CreateTime, Message, Des from "+chatroom+" where Des=? and CreateTime>=? and CreateTime<=?"
+            sql = f"SELECT Type, CreateTime, Message, Des from {chatroom} where Des=? and CreateTime>=? and CreateTime<=?"
             result = sqlite_cur.execute(sql,(str(Desname),str(start_time_stamp),str(end_time_stamp)))
         for row in result:
             counter += 1
@@ -154,7 +149,7 @@ def GetGroupData(chatroom,columns=["id","Type","CreateTime","SentFrom","Message"
             CreateTime = row[1]
             Des = row[3]
             # [3,42,50]
-            if (Type == 10000) or (Type == 10002) or (Type==1000):
+            if Type in [10000, 10002, 1000]:
                 #系统消息
                 if ("撤回" in row[2]) or ("recalled a message" in row[2]):
                     Message = "撤回消息"
@@ -170,7 +165,7 @@ def GetGroupData(chatroom,columns=["id","Type","CreateTime","SentFrom","Message"
                 #我发出的
                 SentFrom = "我"
                 Message = row[2].replace("\n","")
-            elif "<msg>" == row[2].split(":",1)[0][:5]:
+            elif row[2].split(":", 1)[0][:5] == "<msg>":
                 # 视频、链接
                 # if Type not in [43,49]:
                 #     print(row)
@@ -185,7 +180,7 @@ def GetGroupData(chatroom,columns=["id","Type","CreateTime","SentFrom","Message"
                 # if Type not in [34,47,48]:
                 #     print(row)
                 SentFrom = pattern1.findall(row[2])[0]
-                Message = row[2].replace(SentFrom+":",'').replace("\n","")
+                Message = row[2].replace(f"{SentFrom}:", '').replace("\n", "")
             else:
                 # 文字、图片、名片、合并转发
                 # if Type not in [1,3,42,49]:
@@ -196,15 +191,13 @@ def GetGroupData(chatroom,columns=["id","Type","CreateTime","SentFrom","Message"
                 except:
                     # 存在丢失发出人的情况
                     SentFrom = "unknown"
-                
-                
-                
+
+
+
             well_tempered_data.append({"id": counter,"Type": Type,"CreateTime": CreateTime,"SentFrom": SentFrom,"Message": Message,"Des": Des})
         final_data = []
         for i in well_tempered_data:
-            temp = []
-            for j in columns:
-                temp.append(i[j])
+            temp = [i[j] for j in columns]
             final_data.append(temp)
     return final_data
     
@@ -230,21 +223,21 @@ def GetOthersData(chatroom,columns=["id","Type","CreateTime","Message","Des"],De
 
     with SqliteInit() as sqlite_cur:
         if Desname==2:
-            sql = "SELECT Type, CreateTime, Message, Des from "+chatroom+" where CreateTime>=? and CreateTime<=?"
+            sql = f"SELECT Type, CreateTime, Message, Des from {chatroom} where CreateTime>=? and CreateTime<=?"
             result = sqlite_cur.execute(sql,(str(start_time_stamp),str(end_time_stamp)))
         else:
-            sql = "SELECT Type, CreateTime, Message, Des from "+chatroom+" where Des=? and CreateTime>=? and CreateTime<=?"
+            sql = f"SELECT Type, CreateTime, Message, Des from {chatroom} where Des=? and CreateTime>=? and CreateTime<=?"
             result = sqlite_cur.execute(sql,(str(Desname),str(start_time_stamp),str(end_time_stamp)))
         for row in result:
             counter += 1
             Type = row[0]
             CreateTime = row[1]
             Des = row[3]
-            if (Type == 10000) or (Type == 10002):
+            if Type in [10000, 10002]:
                 #系统消息
                 if ("撤回" in row[2]) or ("recalled a message" in row[2]):
                     Message = "撤回消息"
-                    if not (len(pattern1.findall(row[2]))>0):
+                    if len(pattern1.findall(row[2])) <= 0:
                         Des = 0
                 else:
                     Message = row[2].replace("\n","")
@@ -253,9 +246,7 @@ def GetOthersData(chatroom,columns=["id","Type","CreateTime","Message","Des"],De
             well_tempered_data.append({"id": counter, "Type": Type,"CreateTime": CreateTime,"Message": Message,"Des": Des})
         final_data = []
         for i in well_tempered_data:
-            temp = []
-            for j in columns:
-                temp.append(i[j])
+            temp = [i[j] for j in columns]
             final_data.append(temp)
     return final_data
 
@@ -271,9 +262,7 @@ def GetChatrooms(typename=0):
     with SqliteInit() as sqlite_cur:
         find_chatrooms = "select name from sqlite_master where type='table'"
         result = sqlite_cur.execute(find_chatrooms)
-        for row in result:
-            if row[0].find("Chat_")!=-1:
-                chatrooms_all.append(row[0])
+        chatrooms_all.extend(row[0] for row in result if row[0].find("Chat_")!=-1)
     for i in chatrooms_all:
         if ChatroomType(i) == 1:
             chatrooms_group.append(i)
@@ -291,15 +280,8 @@ def GetChatrooms(typename=0):
         return chatrooms_mp
 
 def GetData(chatroom,columns=["Message"],Des=2,start_time="1970-01-02", end_time="", Type=0):
-    if Type == 1:
+    if Type != 1 and Type != 2 and ChatroomType(chatroom) == 1 or Type == 1:
         return GetGroupData(chatroom=chatroom,columns=columns,Desname=Des,start_time=start_time, end_time=end_time)
-    elif Type == 2:
-        return GetOthersData(chatroom=chatroom,columns=columns,Desname=Des,start_time=start_time, end_time=end_time)
     else:
-        if ChatroomType(chatroom) == 1:
-            return GetGroupData(chatroom=chatroom,columns=columns,Desname=Des,start_time=start_time, end_time=end_time)
-        else:
-            return GetOthersData(chatroom=chatroom,columns=columns,Desname=Des,start_time=start_time, end_time=end_time)
+        return GetOthersData(chatroom=chatroom,columns=columns,Desname=Des,start_time=start_time, end_time=end_time)
 
-if __name__=='__main__':
-    pass

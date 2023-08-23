@@ -24,5 +24,3 @@ def SqliteInit(db='../../data/MM.sqlite'):
         sqlite_cur.close()
         sqlite_conn.close()
 
-if __name__=='__main__':
-    pass

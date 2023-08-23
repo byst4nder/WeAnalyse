@@ -27,11 +27,7 @@ def GeoAll(chartname="",filename="geo_ana_all",typename=0,Des=2):
                 counter0 += 1
     print("数据量：",counter0)
     joined_message = ",".join(message_list)
-    cutted_message = []
-    for i in jieba.lcut(joined_message):
-        if len(i)>1:
-            cutted_message.append(i)
-
+    cutted_message = [i for i in jieba.lcut(joined_message) if len(i)>1]
     name_id_dict = {}
     sql = "select id,name from Geodata"
     with sqlInit.MysqlInit() as mysql_cur:
@@ -43,14 +39,15 @@ def GeoAll(chartname="",filename="geo_ana_all",typename=0,Des=2):
     word_counter_dict = {}
     counter1 = 0
     for word in cutted_message:
-        if word in name_id_dict.keys():
+        if word in name_id_dict:
             counter1 += 1
-            if not word in word_counter_dict:
+            if word not in word_counter_dict:
                 word_counter_dict[word] = 1
             else:
                 word_counter_dict[word] += 1
-    sorted_list = sorted(word_counter_dict.items(), reverse=True, key=operator.itemgetter(1))
-    return sorted_list
+    return sorted(
+        word_counter_dict.items(), reverse=True, key=operator.itemgetter(1)
+    )
 
 
 def GeoSingle(chatroom="",chartname="",filename="geo_ana_single",Des=2):
@@ -69,11 +66,7 @@ def GeoSingle(chatroom="",chartname="",filename="geo_ana_single",Des=2):
             counter0 += 1
     print("数据量：",counter0)
     joined_message = ",".join(message_list)
-    cutted_message = []
-    for i in jieba.lcut(joined_message):
-        if len(i)>1:
-            cutted_message.append(i)
-
+    cutted_message = [i for i in jieba.lcut(joined_message) if len(i)>1]
     name_id_dict = {}
     sql = "select id,name from Geodata"
     with sqlInit.MysqlInit() as mysql_cur:
@@ -84,42 +77,43 @@ def GeoSingle(chatroom="",chartname="",filename="geo_ana_single",Des=2):
     word_counter_dict = {}
     counter1 = 0
     for word in cutted_message:
-        if word in name_id_dict.keys():
+        if word in name_id_dict:
             counter1 += 1
-            if not word in word_counter_dict.keys():
+            if word not in word_counter_dict:
                 word_counter_dict[word] = 1
             else:
                 word_counter_dict[word] += 1
-    sorted_list = sorted(word_counter_dict.items(), reverse=True, key=operator.itemgetter(1))
-    return sorted_list
+    return sorted(
+        word_counter_dict.items(), reverse=True, key=operator.itemgetter(1)
+    )
 
 def GeoMap(filename = "geo_ana"):
-    f = open("geo.txt","r",encoding="utf-8")
-    params = f.readline()
-    f.close()
+    with open("geo.txt","r",encoding="utf-8") as f:
+        params = f.readline()
     place_list = re.findall("[(](.*?)[)]",params)
-    name_counter_dict = {}
-    for i in place_list:
-        name_counter_dict[i.split(",")[0].strip('"').strip("'")] = int(i.split(",")[1].strip("'"))
+    name_counter_dict = {
+        i.split(",")[0].strip('"').strip("'"): int(i.split(",")[1].strip("'"))
+        for i in place_list
+    }
     tempered_name_counter_dict = {}
-    for key,value in name_counter_dict.items():
-        if len(key)>2 and (key[-1] == "市" or key[-1] == "省"):
-            if key[:-1] in tempered_name_counter_dict.keys():
+    for key, value in name_counter_dict.items():
+        if len(key) > 2 and key[-1] in ["市", "省"]:
+            if key[:-1] in tempered_name_counter_dict:
                 tempered_name_counter_dict[key[:-1]] = tempered_name_counter_dict[key[:-1]] + value
             else:
                 tempered_name_counter_dict[key[:-1]] = value
         elif key in ['上合','南山区','翻身','科技园','桃园','光明','大学城','八卦岭','龙华','西乡','华侨城','梧桐山','大冲','沙井','红树湾']:
-            if "深圳" in tempered_name_counter_dict.keys():
+            if "深圳" in tempered_name_counter_dict:
                 tempered_name_counter_dict["深圳"] = tempered_name_counter_dict["深圳"] + value
             else:
                 tempered_name_counter_dict["深圳"] = value
         elif key in ['中关村']:
-            if "北京" in tempered_name_counter_dict.keys():
+            if "北京" in tempered_name_counter_dict:
                 tempered_name_counter_dict["北京"] = tempered_name_counter_dict["北京"] + value
             else:
                 tempered_name_counter_dict["北京"] = value
         elif key in ['虹桥']:
-            if "上海" in tempered_name_counter_dict.keys():
+            if "上海" in tempered_name_counter_dict:
                 tempered_name_counter_dict["上海"] = tempered_name_counter_dict["上海"] + value
             else:
                 tempered_name_counter_dict["上海"] = value
@@ -141,18 +135,18 @@ def GeoMap(filename = "geo_ana"):
             code_name_dict[row[0]] = row[1]
     for key,value in tempered_name_counter_dict.items():
         code_counter_dict[name_code_dict[key]] = value
-    for key,value in code_counter_dict.items():
+    for key, value in code_counter_dict.items():
         if len(str(key))<=4:
             simplified_code_counter_dict[key] = value
         else:
-            if int(str(key)[:4]) in simplified_code_counter_dict.keys():
+            if int(str(key)[:4]) in simplified_code_counter_dict:
                 simplified_code_counter_dict[int(str(key)[:4])] = simplified_code_counter_dict[int(str(key)[:4])] + value
             else:
                 simplified_code_counter_dict[int(str(key)[:4])] = value
-    for key,value in simplified_code_counter_dict.items():
+    for key, value in simplified_code_counter_dict.items():
         with sqlInit.GeoSqlInit() as sqlite_cur:
             if len(str(key))==2:
-                sql1 = "select name from province where code="+str(key)
+                sql1 = f"select name from province where code={str(key)}"
                 fetchResult1 = sqlite_cur.execute(sql1)
                 for row in fetchResult1:
                     simplified_name_counter_dict[row[0]] = value
